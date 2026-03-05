@@ -76,30 +76,32 @@ export default function ConfiguracionPage() {
     setError(null);
     setConnecting(true);
     window.FB.login(
-      async (response) => {
+      (response) => {
         setConnecting(false);
         if (response.authResponse?.code) {
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          if (!session) {
-            setError("Sesión expirada. Vuelve a iniciar sesión.");
-            return;
-          }
-          const res = await fetch("/api/whatsapp/connect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              code: response.authResponse.code,
-              access_token: session.access_token,
-              refresh_token: session.refresh_token,
-            }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            setError(json.error || "Error al conectar con WhatsApp.");
-            return;
-          }
-          setError(null);
-          await fetchIntegration();
+          void (async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+              setError("Sesión expirada. Vuelve a iniciar sesión.");
+              return;
+            }
+            const res = await fetch("/api/whatsapp/connect", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code: response.authResponse.code,
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+              }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              setError(json.error || "Error al conectar con WhatsApp.");
+              return;
+            }
+            setError(null);
+            await fetchIntegration();
+          })();
         } else if (response.status !== "unknown") {
           setError("No se obtuvo el código de autorización. Intenta de nuevo.");
         }
