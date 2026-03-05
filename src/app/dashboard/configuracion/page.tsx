@@ -147,10 +147,12 @@ export default function ConfiguracionPage() {
 
         {configIncomplete && (
           <div className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-            Para activar el botón necesitas configurar en tu <code className="rounded bg-amber-100 px-1">.env.local</code>:
-            <code className="mt-1 block rounded bg-amber-100 p-2">
-              NEXT_PUBLIC_META_APP_ID, NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID, META_APP_SECRET
-            </code>
+            Para activar el botón configura las variables de entorno que usa el
+            navegador: <strong>NEXT_PUBLIC_META_APP_ID</strong> y{" "}
+            <strong>NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID</strong>. En local,
+            añádelas en <code className="rounded bg-amber-100 px-1">.env.local</code>.
+            En Vercel, en el proyecto → Settings → Environment Variables (y haz
+            un nuevo deploy después de añadirlas).
           </div>
         )}
 
