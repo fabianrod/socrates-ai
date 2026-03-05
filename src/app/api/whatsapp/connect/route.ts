@@ -58,33 +58,33 @@ export async function POST(request: Request) {
     );
   }
 
-  const origin = (request.headers.get("origin") || "").replace(/\/$/, "");
-  const vercelUrl = process.env.VERCEL_URL;
-  const baseUrl = origin || (vercelUrl ? `https://${vercelUrl}` : "");
-  const redirectUriCandidates: string[] = [
-    "",
-    ...(baseUrl ? [baseUrl, `${baseUrl}/`] : []),
-  ];
+  // Meta exige que redirect_uri sea idéntico al usado en el diálogo OAuth. El SDK no lo expone,
+  // así que usamos el valor que el usuario configura en Meta (Valid OAuth Redirect URIs) y repite aquí.
+  const redirectUri =
+    process.env.META_OAUTH_REDIRECT_URI?.trim() ||
+    (request.headers.get("origin") || "").replace(/\/$/, "") ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
 
-  const tryExchange = async (redirectUri: string) => {
-    const url = new URL("https://graph.facebook.com/v22.0/oauth/access_token");
-    url.searchParams.set("client_id", metaAppId);
-    url.searchParams.set("client_secret", metaAppSecret);
-    url.searchParams.set("code", code);
-    url.searchParams.set("redirect_uri", redirectUri);
-    return fetch(url.toString(), { method: "GET" });
-  };
-
-  let metaRes: Response | null = null;
-  let lastError = "";
-  for (const uri of redirectUriCandidates) {
-    metaRes = await tryExchange(uri);
-    if (metaRes.ok) break;
-    lastError = await metaRes.text();
-    if (!/redirect_uri|redirect uri/i.test(lastError)) break;
+  if (!redirectUri) {
+    return NextResponse.json(
+      {
+        error:
+          "Configura META_OAUTH_REDIRECT_URI en Vercel con el mismo URI que tienes en Meta (Valid OAuth Redirect URIs), sin barra final.",
+      },
+      { status: 500 },
+    );
   }
 
-  if (!metaRes || !metaRes.ok) {
+  const url = new URL("https://graph.facebook.com/v22.0/oauth/access_token");
+  url.searchParams.set("client_id", metaAppId);
+  url.searchParams.set("client_secret", metaAppSecret);
+  url.searchParams.set("code", code);
+  url.searchParams.set("redirect_uri", redirectUri);
+
+  const metaRes = await fetch(url.toString(), { method: "GET" });
+
+  if (!metaRes.ok) {
+    const lastError = await metaRes.text();
     return NextResponse.json(
       { error: "Meta rechazó el código: " + lastError },
       { status: 400 },
