@@ -56,6 +56,7 @@ export default function ConfiguracionPage() {
       }
     }
     const err = params.get("error");
+    const detail = params.get("detail");
     if (err) {
       const messages: Record<string, string> = {
         invalid_state: "Enlace inválido o expirado. Vuelve a intentar desde Configuración.",
@@ -66,7 +67,11 @@ export default function ConfiguracionPage() {
         meta_invalid: "Respuesta de Meta inválida. Vuelve a intentar.",
         save_failed: "Error al guardar la integración. Comprueba SUPABASE_SERVICE_ROLE_KEY y que la tabla whatsapp_integrations exista.",
       };
-      setError(messages[err] ?? `Error: ${err}. Vuelve a intentar.`);
+      let msg = messages[err] ?? `Error: ${err}. Vuelve a intentar.`;
+      if (err === "save_failed" && detail) {
+        msg += ` Detalle: ${decodeURIComponent(detail)}`;
+      }
+      setError(msg);
       if (typeof window !== "undefined") {
         window.history.replaceState({}, "", "/dashboard/configuracion");
       }

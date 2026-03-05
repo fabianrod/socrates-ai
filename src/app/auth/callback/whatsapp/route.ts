@@ -147,9 +147,10 @@ export async function GET(request: Request) {
     );
 
   if (upsertError) {
+    const detail = upsertError.message ?? upsertError.code ?? "";
     return NextResponse.redirect(
       new URL(
-        `/dashboard/configuracion?error=${encodeURIComponent("save_failed")}`,
+        `/dashboard/configuracion?error=save_failed&detail=${encodeURIComponent(detail)}`,
         url.origin,
       ),
     );
