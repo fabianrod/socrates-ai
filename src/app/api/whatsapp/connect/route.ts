@@ -58,7 +58,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const origin = request.headers.get("origin") || "";
+  const origin = (request.headers.get("origin") || "").replace(/\/$/, "");
+  const vercelUrl = process.env.VERCEL_URL;
+  const baseUrl = origin || (vercelUrl ? `https://${vercelUrl}` : "");
+  const redirectUriCandidates: string[] = [
+    "",
+    ...(baseUrl ? [baseUrl, `${baseUrl}/`] : []),
+  ];
+
   const tryExchange = async (redirectUri: string) => {
     const url = new URL("https://graph.facebook.com/v22.0/oauth/access_token");
     url.searchParams.set("client_id", metaAppId);
@@ -68,20 +75,20 @@ export async function POST(request: Request) {
     return fetch(url.toString(), { method: "GET" });
   };
 
-  // Con el SDK de Facebook en el navegador, Meta suele esperar redirect_uri vacío al intercambiar el código.
-  let metaRes = await tryExchange("");
-  if (!metaRes.ok) {
-    const errText = await metaRes.text();
-    if (/redirect_uri|redirect uri/i.test(errText) && origin) {
-      metaRes = await tryExchange(origin);
-    }
-    if (!metaRes.ok) {
-      const finalError = metaRes.bodyUsed ? errText : await metaRes.text();
-      return NextResponse.json(
-        { error: "Meta rechazó el código: " + finalError },
-        { status: 400 },
-      );
-    }
+  let metaRes: Response | null = null;
+  let lastError = "";
+  for (const uri of redirectUriCandidates) {
+    metaRes = await tryExchange(uri);
+    if (metaRes.ok) break;
+    lastError = await metaRes.text();
+    if (!/redirect_uri|redirect uri/i.test(lastError)) break;
+  }
+
+  if (!metaRes || !metaRes.ok) {
+    return NextResponse.json(
+      { error: "Meta rechazó el código: " + lastError },
+      { status: 400 },
+    );
   }
 
   let metaData: {
