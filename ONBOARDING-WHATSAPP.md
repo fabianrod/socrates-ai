@@ -43,7 +43,7 @@ Copia `env.example` a `.env.local` y rellena:
 
 Si aún no tienes la tabla de integraciones, ejecuta en el editor SQL de Supabase el contenido de:
 
-`web/supabase/schema-whatsapp.sql`
+`supabase/schema-whatsapp.sql`
 
 Así tendrás la tabla `whatsapp_integrations` y las políticas RLS para que cada usuario solo vea y gestione su propia conexión.
 

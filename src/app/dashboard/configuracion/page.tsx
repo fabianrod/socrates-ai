@@ -33,16 +33,17 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     let cancelled = false;
-    supabaseClient
-      .from("whatsapp_integrations")
-      .select("id, status, display_phone_number, phone_number_id, whatsapp_business_account_id")
-      .maybeSingle()
-      .then(({ data, error: e }) => {
+    void (async () => {
+      try {
+        const { data, error: e } = await supabaseClient
+          .from("whatsapp_integrations")
+          .select("id, status, display_phone_number, phone_number_id, whatsapp_business_account_id")
+          .maybeSingle();
         if (!cancelled && !e) setIntegration(data ?? null);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
