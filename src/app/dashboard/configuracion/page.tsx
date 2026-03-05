@@ -88,7 +88,10 @@ export default function ConfiguracionPage() {
             }
             const res = await fetch("/api/whatsapp/connect", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
               body: JSON.stringify({
                 code,
                 access_token: session.access_token,
