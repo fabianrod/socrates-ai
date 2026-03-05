@@ -57,15 +57,16 @@ export default function ConfiguracionPage() {
     }
     const err = params.get("error");
     if (err) {
-      setError(
-        err === "invalid_state"
-          ? "Enlace inválido o expirado. Vuelve a intentar."
-          : err === "meta_rejected"
-            ? "Meta rechazó la autorización. Comprueba que el redirect URI en Meta sea exactamente la URL de callback."
-            : err === "server_config"
-              ? "Falta configuración en el servidor (META_* o SUPABASE_SERVICE_ROLE_KEY)."
-              : "Algo falló. Vuelve a intentar.",
-      );
+      const messages: Record<string, string> = {
+        invalid_state: "Enlace inválido o expirado. Vuelve a intentar desde Configuración.",
+        meta_rejected: "Meta rechazó el código. Comprueba que el URI de redirección en Meta sea exactamente: https://tu-dominio/auth/callback/whatsapp",
+        server_config: "Falta configuración en Vercel: META_APP_ID, META_APP_SECRET y SUPABASE_SERVICE_ROLE_KEY.",
+        missing_code_or_state: "Meta no devolvió código o state. ¿Cerraste la ventana antes de tiempo?",
+        no_token: "Meta no devolvió token. Vuelve a intentar el flujo.",
+        meta_invalid: "Respuesta de Meta inválida. Vuelve a intentar.",
+        save_failed: "Error al guardar la integración. Comprueba SUPABASE_SERVICE_ROLE_KEY y que la tabla whatsapp_integrations exista.",
+      };
+      setError(messages[err] ?? `Error: ${err}. Vuelve a intentar.`);
       if (typeof window !== "undefined") {
         window.history.replaceState({}, "", "/dashboard/configuracion");
       }
