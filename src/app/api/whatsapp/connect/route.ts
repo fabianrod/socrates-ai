@@ -64,23 +64,24 @@ export async function POST(request: Request) {
     url.searchParams.set("client_id", metaAppId);
     url.searchParams.set("client_secret", metaAppSecret);
     url.searchParams.set("code", code);
-    if (redirectUri) url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("redirect_uri", redirectUri);
     return fetch(url.toString(), { method: "GET" });
   };
 
-  let metaRes = await tryExchange(origin);
+  // Con el SDK de Facebook en el navegador, Meta suele esperar redirect_uri vacío al intercambiar el código.
+  let metaRes = await tryExchange("");
   if (!metaRes.ok) {
     const errText = await metaRes.text();
-    if (/redirect_uri|redirect uri/i.test(errText)) {
-      metaRes = await tryExchange("");
+    if (/redirect_uri|redirect uri/i.test(errText) && origin) {
+      metaRes = await tryExchange(origin);
     }
-  }
-  if (!metaRes.ok) {
-    const errText = await metaRes.text();
-    return NextResponse.json(
-      { error: "Meta rechazó el código: " + errText },
-      { status: 400 },
-    );
+    if (!metaRes.ok) {
+      const finalError = metaRes.bodyUsed ? errText : await metaRes.text();
+      return NextResponse.json(
+        { error: "Meta rechazó el código: " + finalError },
+        { status: 400 },
+      );
+    }
   }
 
   let metaData: {
