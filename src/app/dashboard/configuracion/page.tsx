@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Script from "next/script";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type Integration = {
@@ -17,7 +16,6 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fbReady, setFbReady] = useState(false);
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID;
   const configId = process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID;
@@ -50,24 +48,32 @@ export default function ConfiguracionPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !appId) return;
-    window.fbAsyncInit = function () {
-      window.FB?.init({
-        appId,
-        cookie: true,
-        xfbml: true,
-        version: "v22.0",
-      });
-      queueMicrotask(() => setFbReady(true));
-    };
-    if (window.FB) queueMicrotask(() => setFbReady(true));
-    return () => {
-      window.fbAsyncInit = undefined;
-    };
-  }, [appId]);
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    if (params.get("connected") === "1") {
+      void fetchIntegration();
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", "/dashboard/configuracion");
+      }
+    }
+    const err = params.get("error");
+    if (err) {
+      setError(
+        err === "invalid_state"
+          ? "Enlace inválido o expirado. Vuelve a intentar."
+          : err === "meta_rejected"
+            ? "Meta rechazó la autorización. Comprueba que el redirect URI en Meta sea exactamente la URL de callback."
+            : err === "server_config"
+              ? "Falta configuración en el servidor (META_* o SUPABASE_SERVICE_ROLE_KEY)."
+              : "Algo falló. Vuelve a intentar.",
+      );
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", "/dashboard/configuracion");
+      }
+    }
+  }, [fetchIntegration]);
 
-  const handleConnectWhatsApp = () => {
-    if (!window.FB || !configId) {
+  const handleConnectWhatsApp = async () => {
+    if (!appId || !configId) {
       setError(
         "Falta la configuración de Meta (NEXT_PUBLIC_META_APP_ID o NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID).",
       );
@@ -75,48 +81,29 @@ export default function ConfiguracionPage() {
     }
     setError(null);
     setConnecting(true);
-    window.FB.login(
-      (response) => {
-        setConnecting(false);
-        const code = response.authResponse?.code;
-        if (code) {
-          void (async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-              setError("Sesión expirada. Vuelve a iniciar sesión.");
-              return;
-            }
-            const res = await fetch("/api/whatsapp/connect", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                code,
-                access_token: session.access_token,
-                refresh_token: session.refresh_token,
-              }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              setError(json.error || "Error al conectar con WhatsApp.");
-              return;
-            }
-            setError(null);
-            await fetchIntegration();
-          })();
-        } else if (response.status !== "unknown") {
-          setError("No se obtuvo el código de autorización. Intenta de nuevo.");
-        }
-      },
-      {
-        config_id: configId,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: { sessionInfoVersion: "3" },
-      },
-    );
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
+      setConnecting(false);
+      return;
+    }
+    const res = await fetch("/api/whatsapp/oauth-state", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      setError(json.error || "No se pudo iniciar el flujo.");
+      setConnecting(false);
+      return;
+    }
+    const { state, redirectUri } = await res.json();
+    const oauthUrl = new URL("https://www.facebook.com/v22.0/dialog/oauth");
+    oauthUrl.searchParams.set("client_id", appId);
+    oauthUrl.searchParams.set("redirect_uri", redirectUri);
+    oauthUrl.searchParams.set("response_type", "code");
+    oauthUrl.searchParams.set("config_id", configId);
+    oauthUrl.searchParams.set("state", state);
+    window.location.href = oauthUrl.toString();
   };
 
   const configIncomplete = !appId || !configId;
@@ -139,20 +126,16 @@ export default function ConfiguracionPage() {
             Conectar WhatsApp Business
           </h2>
           <p className="mt-1 text-xs text-slate-600">
-            Usa el flujo oficial de Embedded Signup de Meta para autorizar a
-            Socrates AI a enviar y recibir mensajes desde tu número de WhatsApp
-            Business. Solo necesitas tu cuenta de Meta Business.
+            Serás redirigido a Meta para autorizar. Después volverás aquí con tu
+            número conectado.
           </p>
         </header>
 
         {configIncomplete && (
           <div className="mb-4 rounded-lg bg-amber-50 p-3 text-xs text-amber-800">
-            Para activar el botón configura las variables de entorno que usa el
-            navegador: <strong>NEXT_PUBLIC_META_APP_ID</strong> y{" "}
-            <strong>NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID</strong>. En local,
-            añádelas en <code className="rounded bg-amber-100 px-1">.env.local</code>.
-            En Vercel, en el proyecto → Settings → Environment Variables (y haz
-            un nuevo deploy después de añadirlas).
+            Configura <strong>NEXT_PUBLIC_META_APP_ID</strong> y{" "}
+            <strong>NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID</strong> en tu entorno
+            (y en Vercel haz un nuevo deploy).
           </div>
         )}
 
@@ -186,31 +169,20 @@ export default function ConfiguracionPage() {
         ) : (
           <div className="flex flex-col gap-3 text-xs text-slate-600 md:flex-row md:items-center md:justify-between">
             <p className="max-w-md">
-              Al hacer clic en &quot;Conectar WhatsApp&quot; se abrirá la ventana
-              de Meta. Inicia sesión con tu cuenta de negocio y autoriza el
-              número que quieras usar.
+              Al hacer clic en &quot;Conectar WhatsApp&quot; irás a Meta, iniciarás
+              sesión y autorizarás el número. Luego volverás aquí.
             </p>
             <button
               type="button"
-              onClick={handleConnectWhatsApp}
-              disabled={connecting || !fbReady || configIncomplete}
+              onClick={() => void handleConnectWhatsApp()}
+              disabled={connecting || configIncomplete}
               className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-5 py-2.5 text-[13px] font-semibold text-slate-950 shadow-sm hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {connecting ? "Conectando…" : "Conectar WhatsApp"}
+              {connecting ? "Redirigiendo…" : "Conectar WhatsApp"}
             </button>
           </div>
         )}
       </section>
-
-      {appId && (
-        <Script
-          src="https://connect.facebook.net/en_US/sdk.js"
-          strategy="lazyOnload"
-          onLoad={() => {
-            if (window.fbAsyncInit) window.fbAsyncInit();
-          }}
-        />
-      )}
     </div>
   );
 }
