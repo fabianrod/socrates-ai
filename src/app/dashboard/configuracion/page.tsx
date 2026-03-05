@@ -78,7 +78,8 @@ export default function ConfiguracionPage() {
     window.FB.login(
       (response) => {
         setConnecting(false);
-        if (response.authResponse?.code) {
+        const code = response.authResponse?.code;
+        if (code) {
           void (async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
@@ -89,7 +90,7 @@ export default function ConfiguracionPage() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                code: response.authResponse.code,
+                code,
                 access_token: session.access_token,
                 refresh_token: session.refresh_token,
               }),
