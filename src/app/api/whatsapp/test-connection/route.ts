@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { fetchWabaAndPhoneFromMeta } from "@/lib/whatsapp-integration";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
@@ -48,44 +49,16 @@ export async function GET(request: Request) {
     );
   }
 
-  // Si no tenemos phone_number_id guardado, intentar obtenerlo de Meta (como en el callback)
+  // Si no tenemos phone_number_id guardado, obtenerlo de Meta (varios flujos: me/owned_*, me/businesses → business/owned_* o client_*)
   let phoneNumberId = storedPhoneId ?? null;
   if (!phoneNumberId) {
-    const wabaRes = await fetch(
-      `https://graph.facebook.com/v22.0/me/owned_whatsapp_business_accounts?access_token=${encodeURIComponent(metaToken)}`,
-    );
-    if (!wabaRes.ok) {
-      return NextResponse.json(
-        { error: "No tenemos el número guardado y Meta no devolvió la cuenta. Reconecta WhatsApp desde Configuración." },
-        { status: 400 },
-      );
-    }
-    const wabaJson = (await wabaRes.json()) as { data?: { id: string }[] };
-    const wabaId = wabaJson.data?.[0]?.id;
-    if (!wabaId) {
-      return NextResponse.json(
-        { error: "No tenemos el número guardado y no hay cuenta de WhatsApp en Meta. Reconecta desde Configuración." },
-        { status: 400 },
-      );
-    }
-    const phonesRes = await fetch(
-      `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${encodeURIComponent(metaToken)}`,
-    );
-    if (!phonesRes.ok) {
-      return NextResponse.json(
-        { error: "No pudimos obtener el número de Meta. Reconecta WhatsApp desde Configuración." },
-        { status: 400 },
-      );
-    }
-    const phonesJson = (await phonesRes.json()) as {
-      data?: { id: string }[];
-    };
-    phoneNumberId = phonesJson.data?.[0]?.id ?? null;
+    const fetched = await fetchWabaAndPhoneFromMeta(metaToken);
+    phoneNumberId = fetched?.phoneNumberId ?? null;
   }
 
   if (!phoneNumberId) {
     return NextResponse.json(
-      { error: "No tenemos el ID del número guardado. Reconecta WhatsApp desde Configuración para guardarlo." },
+      { error: "No pudimos obtener la cuenta ni el número de WhatsApp desde Meta (token válido pero sin acceso a la WABA). Revisa en Meta Business Suite que esta app esté vinculada a tu cuenta de WhatsApp y que el número esté en la misma cuenta." },
       { status: 400 },
     );
   }

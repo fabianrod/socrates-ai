@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { verifyState } from "@/lib/whatsapp-state";
+import { fetchWabaAndPhoneFromMeta } from "@/lib/whatsapp-integration";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -104,26 +105,21 @@ export async function GET(request: Request) {
   let displayPhoneNumber: string | null = null;
 
   if (!wabaId || !phoneNumberId) {
-    const wabaRes = await fetch(
-      `https://graph.facebook.com/v22.0/me/owned_whatsapp_business_accounts?access_token=${encodeURIComponent(metaAccessToken)}`,
-    );
-    if (wabaRes.ok) {
-      const wabaJson = (await wabaRes.json()) as { data?: { id: string }[] };
-      wabaId = wabaJson.data?.[0]?.id;
+    const fetched = await fetchWabaAndPhoneFromMeta(metaAccessToken);
+    if (fetched) {
+      wabaId = wabaId ?? fetched.wabaId ?? undefined;
+      phoneNumberId = phoneNumberId ?? fetched.phoneNumberId ?? undefined;
     }
-  }
-
-  if (wabaId && !phoneNumberId) {
-    const phonesRes = await fetch(
-      `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${encodeURIComponent(metaAccessToken)}`,
-    );
-    if (phonesRes.ok) {
-      const phonesJson = (await phonesRes.json()) as {
-        data?: { id: string; display_phone_number?: string }[];
-      };
-      const first = phonesJson.data?.[0];
-      phoneNumberId = first?.id;
-      displayPhoneNumber = first?.display_phone_number ?? null;
+    if (wabaId && !displayPhoneNumber) {
+      const phonesRes = await fetch(
+        `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?fields=display_phone_number&access_token=${encodeURIComponent(metaAccessToken)}`,
+      );
+      if (phonesRes.ok) {
+        const phonesJson = (await phonesRes.json()) as {
+          data?: { display_phone_number?: string }[];
+        };
+        displayPhoneNumber = phonesJson.data?.[0]?.display_phone_number ?? null;
+      }
     }
   }
 
