@@ -16,6 +16,8 @@ export default function ConfiguracionPage() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: true; verified_name?: string | null; display_phone_number?: string | null } | { error: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID;
@@ -145,6 +147,29 @@ export default function ConfiguracionPage() {
     setDisconnecting(false);
   };
 
+  const handleTestConnection = async () => {
+    setError(null);
+    setTestResult(null);
+    setTesting(true);
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session?.access_token) {
+      setTestResult({ error: "Sesión expirada. Inicia sesión de nuevo." });
+      setTesting(false);
+      return;
+    }
+    const res = await fetch("/api/whatsapp/test-connection", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setTestResult({ error: data.error ?? `Error ${res.status}` });
+      setTesting(false);
+      return;
+    }
+    setTestResult(data.ok ? { ok: true, verified_name: data.verified_name, display_phone_number: data.display_phone_number } : { error: data.error ?? "Error desconocido" });
+    setTesting(false);
+  };
+
   const configIncomplete = !appId || !configId;
 
   return (
@@ -204,17 +229,36 @@ export default function ConfiguracionPage() {
             <p className="text-xs text-slate-500">
               Puedes usar la sección Conversaciones para enviar y recibir mensajes.
             </p>
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <button
-                type="button"
-                onClick={() => void handleDisconnect()}
-                disabled={disconnecting}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              >
-                {disconnecting ? "Desconectando…" : "Desconectar"}
-              </button>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleTestConnection()}
+                  disabled={testing}
+                  className="rounded-full border border-primary bg-primary-soft px-4 py-2 text-[13px] font-medium text-slate-800 hover:bg-primary/20 disabled:opacity-60"
+                >
+                  {testing ? "Comprobando…" : "Probar conexión"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDisconnect()}
+                  disabled={disconnecting}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {disconnecting ? "Desconectando…" : "Desconectar"}
+                </button>
+              </div>
+              {testResult && (
+                <p className={`max-w-sm text-right text-[12px] ${"ok" in testResult && testResult.ok ? "text-green-700" : "text-red-600"}`}>
+                  {"ok" in testResult && testResult.ok
+                    ? `Conexión correcta${testResult.verified_name ? ` · ${testResult.verified_name}` : ""}${testResult.display_phone_number ? ` (${testResult.display_phone_number})` : ""}`
+                    : "error" in testResult
+                      ? testResult.error
+                      : ""}
+                </p>
+              )}
               <p className="text-[11px] text-slate-400">
-                Desvincula el número aquí; quedará libre para volver a conectar.
+                Desconectar desvincula el número aquí; quedará libre para volver a conectar.
               </p>
             </div>
           </div>
