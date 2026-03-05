@@ -15,6 +15,7 @@ export default function ConfiguracionPage() {
   const [integration, setIntegration] = useState<Integration>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const appId = process.env.NEXT_PUBLIC_META_APP_ID;
@@ -119,6 +120,31 @@ export default function ConfiguracionPage() {
     window.location.href = oauthUrl.toString();
   };
 
+  const handleDisconnect = async () => {
+    if (!integration?.id) return;
+    setError(null);
+    setDisconnecting(true);
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      setError("Sesión expirada. Cierra sesión y vuelve a entrar.");
+      setDisconnecting(false);
+      return;
+    }
+    // Borrar la fila: desvincula por completo en esta app. El número queda libre
+    // para volver a conectar aquí (o, si revocan la app en Meta, para otra app).
+    const { error: deleteError } = await supabaseClient
+      .from("whatsapp_integrations")
+      .delete()
+      .eq("user_id", user.id);
+    if (deleteError) {
+      setError(deleteError.message ?? "No se pudo desconectar.");
+      setDisconnecting(false);
+      return;
+    }
+    await fetchIntegration();
+    setDisconnecting(false);
+  };
+
   const configIncomplete = !appId || !configId;
 
   return (
@@ -178,6 +204,19 @@ export default function ConfiguracionPage() {
             <p className="text-xs text-slate-500">
               Puedes usar la sección Conversaciones para enviar y recibir mensajes.
             </p>
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={() => void handleDisconnect()}
+                disabled={disconnecting}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                {disconnecting ? "Desconectando…" : "Desconectar"}
+              </button>
+              <p className="text-[11px] text-slate-400">
+                Desvincula el número aquí; quedará libre para volver a conectar.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-3 text-xs text-slate-600 md:flex-row md:items-center md:justify-between">
