@@ -119,6 +119,11 @@ export default function ConfiguracionPage() {
     oauthUrl.searchParams.set("response_type", "code");
     oauthUrl.searchParams.set("config_id", configId);
     oauthUrl.searchParams.set("state", state);
+    // Permisos necesarios para ver la WABA y el número (y enviar mensajes)
+    oauthUrl.searchParams.set(
+      "scope",
+      "business_management,whatsapp_business_management,whatsapp_business_messaging,public_profile",
+    );
     window.location.href = oauthUrl.toString();
   };
 
