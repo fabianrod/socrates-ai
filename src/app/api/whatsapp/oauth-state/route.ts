@@ -8,12 +8,21 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 const metaAppId = process.env.META_APP_ID;
 const metaAppSecret = process.env.META_APP_SECRET;
 
-export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace(/^Bearer\s+/i, "");
-  if (!token) {
+export async function POST(request: Request) {
+  let body: { access_token?: string; refresh_token?: string };
+  try {
+    body = await request.json();
+  } catch {
     return NextResponse.json(
-      { error: "Falta el token de sesión (Authorization: Bearer ...)" },
+      { error: "Cuerpo JSON inválido (envía access_token y refresh_token)" },
+      { status: 400 },
+    );
+  }
+  const accessToken = body.access_token ?? request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const refreshToken = body.refresh_token ?? "";
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: "Falta el token de sesión (access_token o Authorization)" },
       { status: 401 },
     );
   }
@@ -27,13 +36,13 @@ export async function GET(request: Request) {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
   const { data: sessionData, error } = await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: "",
+    access_token: accessToken,
+    refresh_token: refreshToken,
   });
   const user = sessionData?.user;
   if (error || !user) {
     return NextResponse.json(
-      { error: "Sesión inválida o expirada" },
+      { error: "Sesión inválida o expirada. Cierra sesión y vuelve a entrar." },
       { status: 401 },
     );
   }

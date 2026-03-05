@@ -81,14 +81,21 @@ export default function ConfiguracionPage() {
     }
     setError(null);
     setConnecting(true);
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-      setError("Sesión expirada. Vuelve a iniciar sesión.");
+    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError || !session) {
+      setError("Sesión expirada. Cierra sesión y vuelve a entrar.");
       setConnecting(false);
       return;
     }
+    const { data: { session: refreshed } } = await supabaseClient.auth.refreshSession();
+    const activeSession = refreshed ?? session;
     const res = await fetch("/api/whatsapp/oauth-state", {
-      headers: { Authorization: `Bearer ${session.access_token}` },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: activeSession.access_token,
+        refresh_token: activeSession.refresh_token ?? "",
+      }),
     });
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
