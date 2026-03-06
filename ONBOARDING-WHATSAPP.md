@@ -56,3 +56,27 @@ Así tendrás la tabla `whatsapp_integrations` y las políticas RLS para que cad
 - Tabla `whatsapp_integrations` creada en Supabase.
 
 Con eso, **Conectar WhatsApp** redirige a Meta, autorizas, y al volver se guarda la integración.
+
+---
+
+## Si «Probar conexión» dice: «token válido pero sin acceso a la WABA»
+
+Ese mensaje significa que Meta ha aceptado el token pero la app no puede ver tu cuenta de WhatsApp (WABA) ni el número. Suele ser **configuración en Meta**, no un fallo de código.
+
+### Qué revisar (en este orden)
+
+1. **WhatsApp vinculado a la app**
+   - En [Meta for Developers](https://developers.facebook.com/apps/) abre **tu app**.
+   - Menú **WhatsApp** → **Configuración inicial** (o **Embedded Signup**).
+   - Asegúrate de haber completado el flujo (incluido añadir/verificar el número de WhatsApp Business). Si no hay número asociado a la configuración, el token no tendrá WABA.
+
+2. **Misma cuenta de negocio**
+   - En [Meta Business Suite](https://business.facebook.com): **Configuración del negocio** → **Cuentas** → **Cuentas de WhatsApp**.
+   - El número que quieres usar debe estar en una cuenta de WhatsApp listada ahí.
+   - La **misma** cuenta de negocio debe tener **tu app** añadida (p. ej. en **Configuración** → **Aplicaciones** o donde gestiones las apps del negocio). Si la app está en otro negocio o en una cuenta personal sin WABA, el token no verá el número.
+
+3. **Permisos del token**
+   - El token que devuelve el flujo «Conectar WhatsApp» debe incluir permisos de WhatsApp (p. ej. `whatsapp_business_management`). Eso depende de la **configuración de Embedded Signup** en Meta (plantilla tipo «WhatsApp Embedded Signup Configuration»). Si usas una configuración de inicio de sesión que no pide permisos de WhatsApp, el token no tendrá acceso a la WABA.
+
+4. **Desconectar y volver a conectar**
+   - En la app (Configuración), pulsa **Desconectar** y luego **Conectar WhatsApp** de nuevo. Así generas un token nuevo después de haber corregido los puntos anteriores.
