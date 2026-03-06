@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const redirectUri = `${origin.replace(/\/$/, "")}/auth/callback/whatsapp`;
-  const state = signState(user.id, randomBytes(16).toString("hex"));
+  const state = signState(user.id, randomBytes(16).toString("hex"), redirectUri);
 
   return NextResponse.json({ state, redirectUri });
 }

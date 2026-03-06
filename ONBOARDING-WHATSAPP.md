@@ -83,3 +83,5 @@ Ese mensaje significa que Meta ha aceptado el token pero la app no puede ver tu 
 
 4. **Desconectar y volver a conectar**
    - En la app (Configuración), pulsa **Desconectar** y luego **Conectar WhatsApp** de nuevo. Así generas un token nuevo después de haber corregido los puntos anteriores.
+
+La integración intenta obtener la WABA y el número con la API de Meta en este orden: `me/assigned_whatsapp_business_accounts` (cuentas asignadas al usuario), `me/owned_whatsapp_business_accounts` y, si aplica, vía `me/businesses`. Asegúrate de usar una configuración de tipo **WhatsApp Embedded Signup** en Meta para que el token tenga los permisos correctos.

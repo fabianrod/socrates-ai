@@ -14,8 +14,6 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const errorParam = url.searchParams.get("error");
 
-  const baseUrl = `${url.origin}${url.pathname}`;
-
   if (errorParam) {
     return NextResponse.redirect(
       new URL(
@@ -44,6 +42,8 @@ export async function GET(request: Request) {
     );
   }
 
+  const redirectUriForExchange = parsed.redirectUri ?? `${url.origin}${url.pathname}`;
+
   if (!metaAppId || !metaAppSecret) {
     return NextResponse.redirect(
       new URL(
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   tokenUrl.searchParams.set("client_id", metaAppId);
   tokenUrl.searchParams.set("client_secret", metaAppSecret);
   tokenUrl.searchParams.set("code", code);
-  tokenUrl.searchParams.set("redirect_uri", baseUrl);
+  tokenUrl.searchParams.set("redirect_uri", redirectUriForExchange);
 
   const metaRes = await fetch(tokenUrl.toString(), { method: "GET" });
   if (!metaRes.ok) {

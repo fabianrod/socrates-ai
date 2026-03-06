@@ -6,11 +6,11 @@ export type WhatsAppCredentials = {
   userId: string;
 };
 
-const META_GRAPH = "https://graph.facebook.com/v22.0";
+const META_GRAPH = "https://graph.facebook.com/v25.0";
 
 /**
  * Obtiene WABA id y phone_number_id desde el token de Meta.
- * Prueba: 1) me/owned_whatsapp_business_accounts 2) me/businesses → business/client_whatsapp_business_accounts
+ * Orden (doc Meta 2024+): 1) me/assigned_whatsapp_business_accounts 2) me/owned_whatsapp_business_accounts 3) me/businesses → owned/client_*
  */
 export async function fetchWabaAndPhoneFromMeta(accessToken: string): Promise<{
   wabaId: string | null;
@@ -18,7 +18,30 @@ export async function fetchWabaAndPhoneFromMeta(accessToken: string): Promise<{
 } | null> {
   const token = encodeURIComponent(accessToken);
 
-  // 1) Flujo directo (funciona cuando el token tiene este edge)
+  const tryWabaPhones = async (wabaId: string): Promise<{ wabaId: string; phoneNumberId: string } | null> => {
+    const phonesRes = await fetch(
+      `${META_GRAPH}/${wabaId}/phone_numbers?access_token=${token}`,
+    );
+    if (!phonesRes.ok) return null;
+    const phonesJson = (await phonesRes.json()) as { data?: { id: string }[] };
+    const phoneNumberId = phonesJson.data?.[0]?.id ?? null;
+    return phoneNumberId ? { wabaId, phoneNumberId } : null;
+  };
+
+  // 1) Cuentas WhatsApp asignadas al usuario (Embedded Signup / business user) – doc Graph API User edges
+  const assignedRes = await fetch(
+    `${META_GRAPH}/me/assigned_whatsapp_business_accounts?access_token=${token}`,
+  );
+  if (assignedRes.ok) {
+    const json = (await assignedRes.json()) as { data?: { id: string }[] };
+    const wabaId = json.data?.[0]?.id ?? null;
+    if (wabaId) {
+      const result = await tryWabaPhones(wabaId);
+      if (result) return result;
+    }
+  }
+
+  // 2) Cuentas WhatsApp “propias” del usuario
   const directRes = await fetch(
     `${META_GRAPH}/me/owned_whatsapp_business_accounts?access_token=${token}`,
   );
@@ -26,18 +49,12 @@ export async function fetchWabaAndPhoneFromMeta(accessToken: string): Promise<{
     const json = (await directRes.json()) as { data?: { id: string }[] };
     const wabaId = json.data?.[0]?.id ?? null;
     if (wabaId) {
-      const phonesRes = await fetch(
-        `${META_GRAPH}/${wabaId}/phone_numbers?access_token=${token}`,
-      );
-      if (phonesRes.ok) {
-        const phonesJson = (await phonesRes.json()) as { data?: { id: string }[] };
-        const phoneNumberId = phonesJson.data?.[0]?.id ?? null;
-        if (phoneNumberId) return { wabaId, phoneNumberId };
-      }
+      const result = await tryWabaPhones(wabaId);
+      if (result) return result;
     }
   }
 
-  // 2) Flujo vía businesses (cuando el número se conectó manualmente o por otro flujo)
+  // 3) Flujo vía businesses (requiere business_management)
   const meRes = await fetch(
     `${META_GRAPH}/me?fields=businesses&access_token=${token}`,
   );
