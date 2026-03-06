@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Socrates AI",
+  title: "Socrates AI — Agentes de IA para WhatsApp",
   description:
-    "Crea agentes de IA conectados a WhatsApp Business con Socrates AI.",
+    "Crea agentes de inteligencia artificial que conversan por ti en WhatsApp. Automatiza ventas, soporte y engagement.",
 };
 
 export default function RootLayout({
@@ -24,9 +24,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>
