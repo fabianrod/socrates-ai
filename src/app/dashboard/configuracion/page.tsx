@@ -119,10 +119,10 @@ export default function ConfiguracionPage() {
     oauthUrl.searchParams.set("response_type", "code");
     oauthUrl.searchParams.set("config_id", configId);
     oauthUrl.searchParams.set("state", state);
-    // Pedir explícitamente permisos de WhatsApp (por si la config en Meta no los incluye)
+    // Pedir explícitamente permisos de WhatsApp (business_management no es válido como scope en la URL)
     oauthUrl.searchParams.set(
       "scope",
-      "whatsapp_business_management,whatsapp_business_messaging,business_management",
+      "whatsapp_business_management,whatsapp_business_messaging",
     );
     window.location.href = oauthUrl.toString();
   };
