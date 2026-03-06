@@ -119,6 +119,11 @@ export default function ConfiguracionPage() {
     oauthUrl.searchParams.set("response_type", "code");
     oauthUrl.searchParams.set("config_id", configId);
     oauthUrl.searchParams.set("state", state);
+    // Pedir explícitamente permisos de WhatsApp (por si la config en Meta no los incluye)
+    oauthUrl.searchParams.set(
+      "scope",
+      "whatsapp_business_management,whatsapp_business_messaging,business_management",
+    );
     window.location.href = oauthUrl.toString();
   };
 

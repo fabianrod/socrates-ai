@@ -10,11 +10,14 @@ Para que el flujo **Conectar WhatsApp** funcione en Configuración necesitas cre
 
 ## 2. Configuración de Embedded Signup (Configuration ID)
 
+**Importante:** tiene que ser una configuración **de WhatsApp Embedded Signup**, no una de "Facebook Login" genérica. Si usas una config normal de Login, el token no tendrá permisos de WhatsApp y verás "token válido pero sin acceso a la WABA".
+
 1. En la app de Meta, ve a **Facebook Login for Business** (o **Inicio de sesión de Facebook** > **Configuraciones**).
 2. Crea una **nueva configuración** usando la plantilla:
    - **"WhatsApp Embedded Signup Configuration With 60 Expiration Token"**  
-   (o el nombre equivalente en tu idioma).
-3. Copia el **Configuration ID** (un número largo). Ese valor es tu `NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID`.
+   (o el nombre equivalente en tu idioma). No elijas "Facebook Login" a secas.
+3. En esa configuración, asegúrate de que los permisos/activos incluyan **WhatsApp** (whatsapp_business_management, whatsapp_business_messaging, business_management).
+4. Copia el **Configuration ID** (un número largo). Ese valor es tu `NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID`.
 
 ## 3. URIs de redirección OAuth (importante)
 
