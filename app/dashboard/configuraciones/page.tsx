@@ -1,8 +1,28 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import {
+  getOrCreateOrganization,
+  getOrCreateWhatsAppAccount,
+} from "@/lib/supabase/organization";
+import { ConfigWhatsApp } from "./ConfigWhatsApp";
 
-import { Settings, MessageCircle } from "lucide-react";
+export default async function ConfiguracionesPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-export default function ConfiguracionesPage() {
+  const org = await getOrCreateOrganization(supabase);
+  if (!org) redirect("/dashboard");
+
+  const whatsapp = await getOrCreateWhatsAppAccount(supabase, org.id);
+  const planData = Array.isArray(org.plans) ? org.plans[0] : org.plans;
+  const plan = planData
+    ? (planData as { name: string; phone_number_limit: number })
+    : { name: "Básico", phone_number_limit: 3 };
+  const phoneNumbers = whatsapp?.phone_numbers ?? [];
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -12,28 +32,13 @@ export default function ConfiguracionesPage() {
         </p>
       </div>
 
-      <div className="max-w-2xl">
-        <section className="rounded-2xl border border-border bg-surface-elevated/60 p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-surface-hover flex items-center justify-center border border-border shrink-0">
-              <MessageCircle className="w-6 h-6 text-text-muted" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold mb-1">WhatsApp</h2>
-              <p className="text-sm text-text-muted mb-4">
-                Conecta tu número de WhatsApp Business para que tu agente pueda
-                recibir y enviar mensajes automáticamente.
-              </p>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent text-surface font-medium hover:bg-accent-hover transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Conectar WhatsApp
-              </button>
-            </div>
-          </div>
-        </section>
+      <div className="max-w-2xl space-y-6">
+        <ConfigWhatsApp
+          organizationId={org.id}
+          planName={plan.name}
+          phoneNumberLimit={plan.phone_number_limit}
+          phoneNumbers={phoneNumbers}
+        />
       </div>
     </div>
   );
