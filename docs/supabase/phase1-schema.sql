@@ -215,8 +215,19 @@ CREATE TABLE public.conversation_usage (
 CREATE INDEX idx_conversation_usage_org_period ON public.conversation_usage(organization_id, period);
 
 -- =============================================================================
--- 6. FUNCIÓN HELPER: usuario es miembro de una organización
+-- 6. FUNCIONES HELPER (para RLS)
 -- =============================================================================
+
+-- Comprueba si pid es el id del perfil del usuario actual (para INSERT en organizations)
+CREATE OR REPLACE FUNCTION public.is_owner_profile(pid uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (SELECT 1 FROM public.profiles WHERE id = pid AND user_id = auth.uid());
+$$;
 
 CREATE OR REPLACE FUNCTION public.is_org_member(org_id uuid, u_id uuid)
 RETURNS boolean
@@ -281,8 +292,9 @@ ALTER TABLE public.conversation_usage ENABLE ROW LEVEL SECURITY;
 CREATE POLICY plans_select_all ON public.plans FOR SELECT USING (is_active = true);
 CREATE POLICY agent_types_select_all ON public.agent_types FOR SELECT USING (true);
 
--- Perfiles: solo el propio usuario
+-- Perfiles: solo el propio usuario (y puede crear el suyo si no existe)
 CREATE POLICY profiles_select_own ON public.profiles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY profiles_insert_own ON public.profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY profiles_update_own ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
 
 -- Organizaciones: solo miembros pueden ver; solo owner/admin pueden insertar/actualizar/eliminar
@@ -290,7 +302,7 @@ CREATE POLICY organizations_select_member ON public.organizations
   FOR SELECT USING (public.is_org_member(id, auth.uid()));
 
 CREATE POLICY organizations_insert_own ON public.organizations
-  FOR INSERT WITH CHECK (auth.uid() = (SELECT user_id FROM public.profiles WHERE id = owner_id));
+  FOR INSERT WITH CHECK (public.is_owner_profile(owner_id));
 
 CREATE POLICY organizations_update_member_admin ON public.organizations
   FOR UPDATE USING (
@@ -307,9 +319,23 @@ CREATE POLICY organizations_delete_owner ON public.organizations
     EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = owner_id AND p.user_id = auth.uid())
   );
 
--- Miembros: solo miembros de la org pueden ver; solo owner puede gestionar miembros
+-- Miembros: solo miembros de la org pueden ver; owner puede añadirse como primer miembro o owner/admin añadir otros
 CREATE POLICY organization_members_select_member ON public.organization_members
   FOR SELECT USING (public.is_org_member(organization_id, auth.uid()));
+
+-- El dueño de la org puede añadirse a sí mismo como primer miembro (owner)
+CREATE POLICY organization_members_insert_owner_self ON public.organization_members
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.organizations o
+      JOIN public.profiles p ON p.id = o.owner_id
+      WHERE o.id = organization_id AND p.user_id = auth.uid()
+    )
+    AND EXISTS (
+      SELECT 1 FROM public.profiles p2
+      WHERE p2.id = profile_id AND p2.user_id = auth.uid()
+    )
+  );
 
 CREATE POLICY organization_members_insert_owner_admin ON public.organization_members
   FOR INSERT WITH CHECK (

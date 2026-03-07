@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { MessageCircle, Plus, Phone } from "lucide-react";
+import { EmbeddedSignupBlock } from "./EmbeddedSignupBlock";
 
 type PhoneNumber = {
   id: string;
@@ -11,11 +12,18 @@ type PhoneNumber = {
   status: string;
 };
 
+type EmbeddedSignupConfig = {
+  metaAppId: string;
+  configId: string;
+  solutionId: string;
+};
+
 type Props = {
   organizationId: string;
   planName: string;
   phoneNumberLimit: number;
   phoneNumbers: PhoneNumber[];
+  embeddedSignupConfig?: EmbeddedSignupConfig | null;
 };
 
 export function ConfigWhatsApp({
@@ -23,6 +31,7 @@ export function ConfigWhatsApp({
   planName,
   phoneNumberLimit,
   phoneNumbers,
+  embeddedSignupConfig,
 }: Props) {
   const [phone, setPhone] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -33,6 +42,9 @@ export function ConfigWhatsApp({
 
   const canAdd = list.length < phoneNumberLimit;
   const hasPrimary = list.some((n) => n.is_primary);
+  const refreshList = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -191,6 +203,18 @@ export function ConfigWhatsApp({
           Has alcanzado el límite de números de tu plan. Mejora tu plan para
           agregar más.
         </p>
+      )}
+
+      {embeddedSignupConfig && canAdd && (
+        <div className="mt-6 pt-6 border-t border-border">
+          <EmbeddedSignupBlock
+            metaAppId={embeddedSignupConfig.metaAppId}
+            configId={embeddedSignupConfig.configId}
+            solutionId={embeddedSignupConfig.solutionId}
+            onSuccess={refreshList}
+            disabled={loading}
+          />
+        </div>
       )}
     </section>
   );
