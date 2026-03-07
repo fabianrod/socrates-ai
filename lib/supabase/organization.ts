@@ -142,14 +142,6 @@ export async function getOrCreateOrganization(
       const fallback = await createOrganizationWithAdmin(profile.id, defaultPlan.id);
       if (fallback) return { ok: true, org: fallback };
     }
-    if (typeof console !== "undefined") {
-      console.error("[getOrCreateOrganization] org insert failed", {
-        code: orgError?.code,
-        message: orgError?.message,
-        details: orgError?.details,
-        owner_id: profile.id,
-      });
-    }
     return { ok: false, error: "org_insert_failed" };
   }
 
@@ -160,13 +152,6 @@ export async function getOrCreateOrganization(
   });
 
   if (memberError) {
-    if (typeof console !== "undefined") {
-      console.error("[getOrCreateOrganization] member insert failed", {
-        code: memberError.code,
-        message: memberError.message,
-        details: memberError.details,
-      });
-    }
     return { ok: false, error: "member_insert_failed" };
   }
 
