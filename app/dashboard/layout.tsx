@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  MessageCircle,
-  Users,
-  Settings,
-  Bot,
-  ChevronLeft,
-} from "lucide-react";
+import { MessageCircle, Users, Settings, Bot } from "lucide-react";
+import { DashboardLogout } from "./DashboardLogout";
 
 const navItems = [
   { href: "/dashboard/conversaciones", label: "Conversaciones", icon: MessageCircle },
@@ -50,13 +45,7 @@ export default function DashboardLayout({
         </nav>
 
         <div className="p-3 border-t border-border">
-          <Link
-            href="/"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Salir al inicio
-          </Link>
+          <DashboardLogout />
         </div>
       </aside>
 
