@@ -32,12 +32,18 @@ export async function GET() {
     );
   }
 
+  function contactPhone(contacts: unknown): string {
+    if (contacts == null) return "";
+    const c = Array.isArray(contacts) ? contacts[0] : contacts;
+    return (c as { wa_phone_number?: string })?.wa_phone_number ?? "";
+  }
+
   const ids = (conversations ?? []).map((c) => c.id);
   if (ids.length === 0) {
     return NextResponse.json({
       conversations: (conversations ?? []).map((c) => ({
         id: c.id,
-        contact_phone: (c.contacts as { wa_phone_number: string } | null)?.wa_phone_number ?? "",
+        contact_phone: contactPhone(c.contacts),
         last_message_at: c.last_message_at,
         last_message_body: null,
       })),
@@ -59,7 +65,7 @@ export async function GET() {
 
   const list = (conversations ?? []).map((c) => ({
     id: c.id,
-    contact_phone: (c.contacts as { wa_phone_number: string } | null)?.wa_phone_number ?? "",
+    contact_phone: contactPhone(c.contacts),
     last_message_at: c.last_message_at,
     last_message_body: lastByConv[c.id]?.body ?? null,
   }));
