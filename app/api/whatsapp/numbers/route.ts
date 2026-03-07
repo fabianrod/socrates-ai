@@ -70,7 +70,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const limit = (org.plans as { phone_number_limit: number } | null)?.phone_number_limit ?? 3;
+  const plans = org.plans as
+    | { phone_number_limit: number }
+    | { phone_number_limit: number }[]
+    | null;
+  const limit = Array.isArray(plans)
+    ? plans[0]?.phone_number_limit ?? 3
+    : plans?.phone_number_limit ?? 3;
 
   let accountId: string | null = null;
   const { data: existingAccount } = await supabase

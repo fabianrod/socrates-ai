@@ -44,8 +44,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const orgId = (phoneRow.whatsapp_accounts as { organization_id: string })
-    .organization_id;
+  const accounts = phoneRow.whatsapp_accounts as
+    | { organization_id: string }
+    | { organization_id: string }[]
+    | null;
+  const orgId = Array.isArray(accounts)
+    ? accounts[0]?.organization_id
+    : accounts?.organization_id;
+  if (!orgId) {
+    return NextResponse.json({ ok: true });
+  }
   const phoneNumberId = phoneRow.id;
 
   let contactId: string;
